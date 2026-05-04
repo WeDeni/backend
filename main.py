@@ -44,7 +44,7 @@ def get_tasks():
 def get_book():
     '''Получить информацию о книге'''
     global book
-    name_book = book.name
+    name_book = book.name  #type: ignore
     return 'Любимая книга - ' + name_book
 
 
