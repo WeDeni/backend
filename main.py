@@ -27,17 +27,24 @@ class Task(BaseModel):
 class TaskCreate(BaseModel):
     title: str
 
-class Book(BaseModel):
-    name: str
-
-
 class TaskUpdateSchema(BaseModel):
     title: str | None = None
     completed: bool | None = None
 
+class Category(BaseModel):
+    '''Модель категории'''
+    id: str
+    name: str
 
-book: Book | None = None
+class CategoryCreate(BaseModel):
+    name: str
+
+class CategoryUpdateSchema(BaseModel):
+    name: str | None = None
+
+
 tasks: list[Task] = []
+categories: list[Category] = []
 
 
 @app.get('/tasks', response_model=list[Task])
@@ -46,12 +53,10 @@ def get_tasks():
     return tasks
 
 
-@app.get('/book', response_model=str)
-def get_book():
-    '''Получить информацию о книге'''
-    global book
-    name_book = book.name  #type: ignore
-    return 'Любимая книга - ' + name_book
+@app.get('/categories', response_model=list[Category])
+def get_categories():
+    '''Получить список категорий'''
+    return categories
 
 
 @app.post('/tasks', response_model=Task, status_code=status.HTTP_201_CREATED)
@@ -65,14 +70,18 @@ def create_task(payload: TaskCreate):
     return new_task
 
 
-@app.post('/book', response_model=Book, status_code=status.HTTP_201_CREATED)
-def create_book(payload: Book):
-    '''Создать имя книги'''
-    global book
-    book = Book(name = payload.name)
-    return book
+@app.post('/categories', response_model=Category, status_code=status.HTTP_201_CREATED)
+def create_category(payload: CategoryCreate):
+    '''Создать новую категорию'''
+    for category in categories:
+        if category.name == payload.name:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Категория с таким названием уже существует')
+    new_category = Category(id=str(uuid4()), name=payload.name)
+    categories.append(new_category)
+    return new_category
 
-@app.patch('/tasks/{task_id}')
+
+@app.patch('/tasks/{task_id}', status_code=status.HTTP_200_OK)
 def update_task(task_id: str, payload: TaskUpdateSchema):
     for task in tasks:
         if task.id == task_id:
@@ -82,9 +91,29 @@ def update_task(task_id: str, payload: TaskUpdateSchema):
                 task.completed = payload.completed
             return task
 
-@app.delete('/tasks/{task_id}')
+
+@app.patch('/categories/{category_id}', status_code=status.HTTP_200_OK)
+def update_category(category_id: str, payload: CategoryUpdateSchema):
+    for category in categories:
+        if category.id == category_id:
+            category.name = payload.name
+            return category
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Category not found')
+
+
+@app.delete('/tasks/{task_id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(task_id: str):
     for task in tasks:
         if task.id == task_id:
             tasks.remove(task)
             return
+
+@app.delete('/categories/{category_id}', status_code=status.HTTP_204_NO_CONTENT)
+def delete_category(category_id: str):
+    for category in categories:
+        if category.id == category_id:
+            categories.remove(category)
+        else:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Category not found')
+        return
